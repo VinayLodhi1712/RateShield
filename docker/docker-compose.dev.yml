@@ -1,0 +1,19 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: rateshield
+      POSTGRES_PASSWORD: rateshield
+      POSTGRES_DB: rateshield
+    ports:
+      - "5432:5432"
+    volumes:
+      - rateshield_pgdata:/var/lib/postgresql/data
+
+volumes:
+  rateshield_pgdata:
