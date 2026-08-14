@@ -6,9 +6,10 @@
     "test": "tests"
   },
   "scripts": {
-    "dev":   "nodemon --watch src --ext js src/server.js",
-    "start": "node src/server.js",
-    "test":  "jest --runInBand --forceExit"
+    "dev":     "nodemon --watch src --ext js src/server.js",
+    "start":   "node src/server.js",
+    "test":    "jest --runInBand --forceExit",
+    "db:seed": "node src/db/seed.js"
   },
   "keywords": [],
   "author": "",

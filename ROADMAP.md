@@ -20,7 +20,7 @@ Milestones are implemented one at a time. Do not start a new milestone until the
   ioredis client, connection wrapper, health check update
 - [x] **Milestone 9 — Fixed Window Rate Limiter**
   Lua script, middleware wiring, 429 response shape
-- [ ] **Milestone 10 — Policies Table + Seed**
+- [x] **Milestone 10 — Policies Table + Seed**
   Minimal PostgreSQL schema for policies, one default policy seed script
 - [ ] **Milestone 11 — Rate Limit Status Endpoint**
   GET /rate-limit/status — current state for authenticated user

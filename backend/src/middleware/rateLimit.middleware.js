@@ -2,29 +2,34 @@
 
 // Stage 2 Rate Limit Middleware — see Architecture.md §2.3 and API.md §5, §11.
 const { checkFixedWindow } = require('../limiters/fixedWindow.limiter');
+const { resolvePolicy } = require('../services/policyCache.service');
 const logger = require('../utils/logger');
 
-// Default fallback policy — in Milestone 10 this queries PostgreSQL policies table
-const DEFAULT_POLICY = {
-  name: 'Default Fixed Window Policy',
-  limit: 100,
-  windowSeconds: 60,
-  failureMode: 'open',
-  algorithm: 'fixed_window',
-};
-
-function createRateLimiter(customPolicy = {}) {
+function createRateLimiter(customPolicy = null) {
   return async function rateLimitMiddleware(req, res, next) {
-    const policy = { ...DEFAULT_POLICY, ...customPolicy };
-    const identityKey = req.identityKey || 'ip:' + (req.ip || req.socket.remoteAddress || '127.0.0.1');
+    const ipAddress = req.ip || req.socket.remoteAddress || '127.0.0.1';
+    const userId = req.user ? req.user.id : null;
+    const identityKey = req.identityKey || (userId ? `user:${userId}` : `ip:${ipAddress}`);
+
+    const policy = customPolicy || await resolvePolicy({
+      userId,
+      ipAddress,
+      method: req.method,
+      path: req.path,
+    });
+
+    const limit = policy.limit_count || policy.limit || 100;
+    const windowSeconds = policy.window_seconds || policy.windowSeconds || 60;
+    const failureMode = policy.failure_mode || policy.failureMode || 'open';
+    const policyName = policy.name || 'Default Policy';
 
     try {
       const result = await checkFixedWindow({
         identityKey,
         method: req.method,
         path: req.path,
-        limit: policy.limit,
-        windowSeconds: policy.windowSeconds,
+        limit,
+        windowSeconds,
       });
 
       res.setHeader('X-RateLimit-Limit', result.limit);
@@ -41,16 +46,16 @@ function createRateLimiter(customPolicy = {}) {
             message: 'Too many requests. You have exceeded the rate limit for this endpoint.',
             retryAfter: result.retryAfter,
             limit: result.limit,
-            windowSeconds: policy.windowSeconds,
+            windowSeconds,
             algorithm: result.algorithm,
-            policyName: policy.name,
+            policyName,
           },
         });
       }
 
       next();
     } catch (err) {
-      if (policy.failureMode === 'closed') {
+      if (failureMode === 'closed') {
         logger.error(`[RateLimit] Redis unavailable on fail-closed policy: ${err.message}`);
         return res.status(503).json({
           success: false,
