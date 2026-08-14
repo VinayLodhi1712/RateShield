@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RateShield — Distributed Rate Limiting Dashboard</title>
+  <meta name="description" content="Real-time interactive dashboard for RateShield distributed rate limiter with live telemetry, token inspection, and burst testing.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Background Glow & Grid -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="bg-grid"></div>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-badge">
+        <div class="logo-shield">🛡️</div>
+        <div class="logo-text">
+          <span class="logo-title">RateShield</span>
+          <span class="logo-subtitle">Distributed Rate Limiter</span>
+        </div>
+      </div>
+      <div class="status-pill status-healthy" id="system-status-pill">
+        <span class="pulse-dot"></span>
+        <span id="system-status-text">System Online</span>
+      </div>
+    </div>
+    
+    <div class="header-right">
+      <div class="health-metrics">
+        <div class="metric-mini" id="health-api">
+          <span class="metric-dot dot-green"></span> API: <strong id="api-latency">0ms</strong>
+        </div>
+        <div class="metric-mini" id="health-redis">
+          <span class="metric-dot dot-green"></span> Redis: <strong id="redis-latency">0ms</strong>
+        </div>
+        <div class="metric-mini" id="health-postgres">
+          <span class="metric-dot dot-green"></span> Postgres: <strong id="db-latency">0ms</strong>
+        </div>
+      </div>
+      <div class="auth-status-container" id="auth-status-container">
+        <span class="user-badge" id="user-badge" style="display:none;"></span>
+        <button class="btn btn-outline" id="btn-auth-toggle">Login / Register</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="dashboard-grid">
+    
+    <!-- Left Column: Rate Limit Gauge & Interactive Burst Controller -->
+    <section class="card gauge-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon">⚡</span>
+          <h2>Live Rate Limit Gauge</h2>
+        </div>
+        <span class="badge badge-purple" id="policy-badge">Default Policy</span>
+      </div>
+
+      <div class="gauge-display">
+        <div class="circular-gauge">
+          <svg class="progress-ring" width="200" height="200">
+            <circle class="progress-ring-circle-bg" stroke="rgba(255,255,255,0.06)" stroke-width="12" fill="transparent" r="84" cx="100" cy="100"/>
+            <circle class="progress-ring-circle" id="gauge-circle" stroke="url(#gauge-gradient)" stroke-width="12" stroke-dasharray="527.78" stroke-dashoffset="0" stroke-linecap="round" fill="transparent" r="84" cx="100" cy="100"/>
+            <defs>
+              <linearGradient id="gauge-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#06b6d4"/>
+                <stop offset="50%" stop-color="#3b82f6"/>
+                <stop offset="100%" stop-color="#8b5cf6"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="gauge-value">
+            <span class="gauge-number" id="gauge-remaining">100</span>
+            <span class="gauge-label">Tokens Left</span>
+          </div>
+        </div>
+
+        <div class="gauge-stats-grid">
+          <div class="stat-box">
+            <span class="stat-label">Capacity</span>
+            <span class="stat-value" id="stat-limit">100</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Window</span>
+            <span class="stat-value" id="stat-window">60s</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Reset In</span>
+            <span class="stat-value" id="stat-reset">60s</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">Algorithm</span>
+            <span class="stat-value text-cyan" id="stat-algo">Fixed Window</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Burst Test Controls -->
+      <div class="burst-controls">
+        <h3>Interactive Traffic Generator</h3>
+        <p class="text-muted">Simulate client traffic to observe real-time rate limit throttling and 429 responses.</p>
+        
+        <div class="endpoint-picker">
+          <label for="endpoint-select">Target Endpoint</label>
+          <select id="endpoint-select" class="input-select">
+            <option value="GET /health">GET /health (Global - 100 req/60s)</option>
+            <option value="POST /auth/login">POST /auth/login (Strict IP - 5 req/60s)</option>
+            <option value="GET /rate-limit/status">GET /rate-limit/status (Inspection)</option>
+          </select>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btn-send-1">Send 1 Request</button>
+          <button class="btn btn-cyan" id="btn-send-5">Burst 5 Requests</button>
+          <button class="btn btn-purple" id="btn-send-15">Burst 15 Requests</button>
+          <button class="btn btn-rose" id="btn-send-50">Burst 50 Requests</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Live Telemetry & Metrics -->
+    <section class="card telemetry-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon">📊</span>
+          <h2>Live Request Telemetry</h2>
+        </div>
+        <div class="telemetry-badges">
+          <span class="badge badge-emerald" id="badge-allowed">0 Allowed</span>
+          <span class="badge badge-rose" id="badge-blocked">0 Blocked (429)</span>
+          <button class="btn-icon" id="btn-clear-logs" title="Clear logs">🗑️</button>
+        </div>
+      </div>
+
+      <div class="telemetry-table-wrapper">
+        <table class="telemetry-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Method</th>
+              <th>Endpoint</th>
+              <th>Status</th>
+              <th>Remaining</th>
+              <th>Latency</th>
+              <th>Request ID</th>
+            </tr>
+          </thead>
+          <tbody id="telemetry-tbody">
+            <tr class="empty-row">
+              <td colspan="7">No requests triggered yet. Click a burst button on the left to start testing!</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Auth Modal -->
+  <div class="modal-overlay" id="auth-modal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-title">Sign In to RateShield</h3>
+        <button class="btn-close" id="btn-close-modal">✕</button>
+      </div>
+
+      <div class="modal-tabs">
+        <button class="tab-btn active" id="tab-login">Login</button>
+        <button class="tab-btn" id="tab-register">Register</button>
+      </div>
+
+      <form id="auth-form" class="auth-form">
+        <div class="form-group">
+          <label for="auth-email">Email Address</label>
+          <input type="email" id="auth-email" class="input-text" placeholder="developer@rateshield.io" required>
+        </div>
+
+        <div class="form-group">
+          <label for="auth-password">Password</label>
+          <input type="password" id="auth-password" class="input-text" placeholder="••••••••••••" required minlength="8">
+        </div>
+
+        <div id="auth-error-msg" class="auth-error" style="display: none;"></div>
+
+        <button type="submit" class="btn btn-primary btn-block" id="btn-auth-submit">Login</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
