@@ -24,7 +24,7 @@ Milestones are implemented one at a time. Do not start a new milestone until the
   Minimal PostgreSQL schema for policies, one default policy seed script
 - [x] **Milestone 11 — Rate Limit Status Endpoint**
   GET /rate-limit/status — current state for authenticated user
-- [ ] **Milestone 12 — Docker (MVP)**
+- [x] **Milestone 12 — Docker (MVP)**
   Dockerfile + docker-compose: backend + Redis + PostgreSQL only
 
 ## Phase 2 — Post-MVP

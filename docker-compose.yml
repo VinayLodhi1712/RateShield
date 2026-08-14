@@ -1,0 +1,59 @@
+# Docker Compose orchestration for RateShield MVP — see docs/Deployment.md
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: rateshield-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rateshield
+      POSTGRES_PASSWORD: rateshield
+      POSTGRES_DB: rateshield
+    ports:
+      - "5432:5432"
+    volumes:
+      - rateshield_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rateshield -d rateshield"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: rateshield-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - rateshield_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rateshield-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      JWT_SECRET: changeme_generate_a_real_secret_at_least_32_chars
+      JWT_EXPIRES_IN: 15m
+      DATABASE_URL: postgresql://rateshield:rateshield@postgres:5432/rateshield
+      REDIS_URL: redis://redis:6379
+      LOG_LEVEL: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  rateshield_pgdata:
+  rateshield_redisdata:
