@@ -14,7 +14,7 @@ Milestones are implemented one at a time. Do not start a new milestone until the
   Winston setup, log levels, HTTP request logging middleware
 - [x] **Milestone 6 — Error Handling**
   Custom error classes, centralized error middleware
-- [ ] **Milestone 7 — Authentication (JWT only)**
+- [x] **Milestone 7 — Authentication (JWT only)**
   Register, login, refresh — JWT + refresh tokens only; API keys deferred to Phase 2
 - [ ] **Milestone 8 — Redis Integration**
   ioredis client, connection wrapper, health check update

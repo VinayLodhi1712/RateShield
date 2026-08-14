@@ -3,6 +3,7 @@
 // Single source of truth for environment configuration.
 // All env vars are validated here at startup; no other file reads process.env directly.
 // Rationale for this pattern: Architecture.md Section 2.1 ("Centralised Configuration").
+require('dotenv').config();
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
