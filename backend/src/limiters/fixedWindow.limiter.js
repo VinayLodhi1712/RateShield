@@ -56,8 +56,38 @@ async function checkFixedWindow({ identityKey, method, path, limit, windowSecond
   }
 }
 
+async function getFixedWindowStatus({ identityKey, method, path, limit, windowSeconds }) {
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const windowStart = Math.floor(nowSeconds / windowSeconds) * windowSeconds;
+  const resetTime = windowStart + windowSeconds;
+  const key = buildKey(identityKey, method, path, windowStart);
+
+  try {
+    const rawVal = await redis.get(key);
+    const current = rawVal ? parseInt(rawVal, 10) : 0;
+    const remaining = Math.max(0, limit - current);
+    const allowed = current < limit;
+
+    return {
+      allowed,
+      remaining,
+      resetAt: new Date(resetTime * 1000).toISOString(),
+      algorithm: 'fixed_window',
+    };
+  } catch (err) {
+    logger.warn(`[FixedWindow] Read status error: ${err.message}`);
+    return {
+      allowed: true,
+      remaining: limit,
+      resetAt: new Date(resetTime * 1000).toISOString(),
+      algorithm: 'fixed_window',
+    };
+  }
+}
+
 module.exports = {
   checkFixedWindow,
+  getFixedWindowStatus,
   buildKey,
   FIXED_WINDOW_LUA,
 };

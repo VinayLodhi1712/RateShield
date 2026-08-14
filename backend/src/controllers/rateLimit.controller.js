@@ -1,0 +1,69 @@
+'use strict';
+
+// Rate limit status controller — see API.md Section 9.
+const { resolvePolicy } = require('../services/policyCache.service');
+const { getFixedWindowStatus } = require('../limiters/fixedWindow.limiter');
+const { ValidationError } = require('../utils/errors');
+
+async function getStatus(req, res, next) {
+  try {
+    const rawEndpoint = req.query.endpoint;
+    if (!rawEndpoint || typeof rawEndpoint !== 'string' || !rawEndpoint.trim()) {
+      throw new ValidationError('Validation failed', [
+        { field: 'endpoint', message: 'endpoint query parameter is required' },
+      ]);
+    }
+
+    let method = 'GET';
+    let path = rawEndpoint.trim();
+    if (path.includes(' ')) {
+      const parts = path.split(/\s+/);
+      method = parts[0].toUpperCase();
+      path = parts.slice(1).join(' ');
+    }
+
+    const userId = req.user.id;
+    const ipAddress = req.ip || req.socket.remoteAddress || '127.0.0.1';
+    const identityKey = `user:${userId}`;
+
+    const policy = await resolvePolicy({
+      userId,
+      ipAddress,
+      method,
+      path,
+    });
+
+    const limit = policy.limit_count || policy.limit || 100;
+    const windowSeconds = policy.window_seconds || policy.windowSeconds || 60;
+
+    const state = await getFixedWindowStatus({
+      identityKey,
+      method,
+      path,
+      limit,
+      windowSeconds,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        endpoint: `${method} ${path}`,
+        policy: {
+          id: policy.id,
+          name: policy.name,
+          algorithm: policy.algorithm || 'fixed_window',
+          limitCount: limit,
+          windowSeconds,
+          failureMode: policy.failure_mode || 'open',
+        },
+        state,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = {
+  getStatus,
+};

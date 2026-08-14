@@ -11,8 +11,9 @@ const { authMiddleware }      = require('./middleware/auth.middleware');
 const { rateLimitMiddleware } = require('./middleware/rateLimit.middleware');
 const errorMiddleware         = require('./middleware/error.middleware');
 
-const healthRouter = require('./routes/health.routes');
-const authRouter   = require('./routes/auth.routes');
+const healthRouter    = require('./routes/health.routes');
+const authRouter      = require('./routes/auth.routes');
+const rateLimitRouter = require('./routes/rateLimit.routes');
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use(rateLimitMiddleware);
 // 8. Stage 3 Routes.
 app.use('/health', healthRouter);
 app.use('/auth', authRouter);
+app.use('/rate-limit', rateLimitRouter);
 
 // 9. 404 handler for unmatched routes.
 app.use((req, _res, next) => {
