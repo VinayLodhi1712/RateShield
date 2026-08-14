@@ -18,7 +18,7 @@ Milestones are implemented one at a time. Do not start a new milestone until the
   Register, login, refresh — JWT + refresh tokens only; API keys deferred to Phase 2
 - [x] **Milestone 8 — Redis Integration**
   ioredis client, connection wrapper, health check update
-- [ ] **Milestone 9 — Fixed Window Rate Limiter**
+- [x] **Milestone 9 — Fixed Window Rate Limiter**
   Lua script, middleware wiring, 429 response shape
 - [ ] **Milestone 10 — Policies Table + Seed**
   Minimal PostgreSQL schema for policies, one default policy seed script

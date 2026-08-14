@@ -6,12 +6,24 @@ const app = require('../../src/app');
 const redisConfig = require('../../src/config/redis');
 const dbConfig = require('../../src/config/db');
 
-jest.mock('../../src/config/redis');
-jest.mock('../../src/config/db');
+jest.mock('../../src/config/redis', () => ({
+  redis: {
+    eval: jest.fn().mockResolvedValue([1, 1, 99]),
+  },
+  pingRedis: jest.fn(),
+  closeRedis: jest.fn(),
+}));
+
+jest.mock('../../src/config/db', () => ({
+  query: jest.fn(),
+  pingDb: jest.fn(),
+  closeDb: jest.fn(),
+}));
 
 describe('GET /health (Integration)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    redisConfig.redis.eval.mockResolvedValue([1, 1, 99]);
   });
 
   it('should return 200 and healthy status when all components are up', async () => {

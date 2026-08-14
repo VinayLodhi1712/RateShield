@@ -5,16 +5,25 @@ const request = require('supertest');
 const app = require('../../src/app');
 const userModel = require('../../src/models/user.model');
 const refreshTokenModel = require('../../src/models/refreshToken.model');
+const redisConfig = require('../../src/config/redis');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const config = require('../../src/config');
 
 jest.mock('../../src/models/user.model');
 jest.mock('../../src/models/refreshToken.model');
+jest.mock('../../src/config/redis', () => ({
+  redis: {
+    eval: jest.fn().mockResolvedValue([1, 1, 99]),
+  },
+  pingRedis: jest.fn().mockResolvedValue({ status: 'healthy' }),
+  closeRedis: jest.fn(),
+}));
 
 describe('Auth Endpoints (Integration)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    redisConfig.redis.eval.mockResolvedValue([1, 1, 99]);
   });
 
   describe('POST /auth/register', () => {
