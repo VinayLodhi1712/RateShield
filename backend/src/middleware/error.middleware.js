@@ -1,14 +1,23 @@
 'use strict';
 
-// Global error handler — returns the standard error envelope from API.md Section 4.
-// Must be the LAST middleware registered (Express identifies it by the 4-arg signature).
-// Custom errors should set err.statusCode and err.errorCode; see Milestone 6.
+// Global error handler — returns standard error envelope (API.md Section 4).
+// Must be last middleware registered in Express (4-arg signature).
+
+const logger = require('../utils/logger');
 
 function errorMiddleware(err, req, res, _next) {
   const statusCode = err.statusCode || 500;
-  const errorCode  = err.errorCode  || 'INTERNAL_ERROR';
+  const errorCode = err.errorCode || 'INTERNAL_ERROR';
 
-  // Hide internal error messages from clients in production (4xx messages are safe to show).
+  // Log 500 / unhandled errors with stack trace for debugging
+  if (statusCode >= 500) {
+    logger.error(`[Unhandled Error] ${err.message}`, {
+      requestId: req.requestId,
+      stack: err.stack,
+    });
+  }
+
+  // Hide raw internal error messages in production for 5xx errors
   const isProd = process.env.NODE_ENV === 'production';
   const message = isProd && statusCode >= 500
     ? 'An unexpected error occurred.'
@@ -23,7 +32,9 @@ function errorMiddleware(err, req, res, _next) {
     body.error.details = err.details;
   }
 
-  if (req.requestId) res.setHeader('X-Request-Id', req.requestId);
+  if (req.requestId) {
+    res.setHeader('X-Request-Id', req.requestId);
+  }
 
   res.status(statusCode).json(body);
 }
