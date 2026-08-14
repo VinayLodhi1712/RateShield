@@ -5,6 +5,8 @@ const { checkFixedWindow } = require('../limiters/fixedWindow.limiter');
 const { resolvePolicy } = require('../services/policyCache.service');
 const logger = require('../utils/logger');
 
+let hasLoggedFailOpen = false;
+
 function createRateLimiter(customPolicy = null) {
   return async function rateLimitMiddleware(req, res, next) {
     const ipAddress = req.ip || req.socket.remoteAddress || '127.0.0.1';
@@ -32,6 +34,7 @@ function createRateLimiter(customPolicy = null) {
         windowSeconds,
       });
 
+      hasLoggedFailOpen = false;
       res.setHeader('X-RateLimit-Limit', result.limit);
       res.setHeader('X-RateLimit-Remaining', result.remaining);
       res.setHeader('X-RateLimit-Reset', result.resetTime);
@@ -69,7 +72,10 @@ function createRateLimiter(customPolicy = null) {
       }
 
       // Fail-open: allow request through during Redis downtime
-      logger.warn(`[RateLimit] Redis unavailable, failing open: ${err.message}`);
+      if (!hasLoggedFailOpen) {
+        logger.warn(`[RateLimit] Redis unavailable, failing open: ${err.message}`);
+        hasLoggedFailOpen = true;
+      }
       res.setHeader('X-RateLimit-Fallback', 'true');
       next();
     }

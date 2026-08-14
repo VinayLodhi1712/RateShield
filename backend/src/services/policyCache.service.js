@@ -36,7 +36,8 @@ async function resolvePolicy({ userId = null, ipAddress = '127.0.0.1', method = 
     cache.set(cacheKey, { policy: activePolicy, timestamp: Date.now() });
     return activePolicy;
   } catch (err) {
-    logger.warn(`[PolicyCache] DB lookup error, using fallback policy: ${err.message}`);
+    logger.warn(`[PolicyCache] DB unavailable, caching fallback for 30s: ${err.message}`);
+    cache.set(cacheKey, { policy: FALLBACK_POLICY, timestamp: Date.now() });
     return FALLBACK_POLICY;
   }
 }
