@@ -2,7 +2,6 @@
 
 // Fixed Window rate limiter — see Redis.md Section 5 and Algorithms.md Section 3.
 const { redis } = require('../config/redis');
-const logger = require('../utils/logger');
 
 const FIXED_WINDOW_LUA = `
 local key = KEYS[1]
@@ -35,25 +34,20 @@ async function checkFixedWindow({ identityKey, method, path, limit, windowSecond
   const resetTime = windowStart + windowSeconds;
   const key = buildKey(identityKey, method, path, windowStart);
 
-  try {
-    const result = await redis.eval(FIXED_WINDOW_LUA, 1, key, limit, windowSeconds);
-    const allowed = result[0] === 1;
-    const current = Number(result[1]);
-    const remaining = Math.max(0, Number(result[2]));
+  const result = await redis.eval(FIXED_WINDOW_LUA, 1, key, limit, windowSeconds);
+  const allowed = result[0] === 1;
+  const current = Number(result[1]);
+  const remaining = Math.max(0, Number(result[2]));
 
-    return {
-      allowed,
-      limit,
-      remaining,
-      resetTime,
-      current,
-      retryAfter: allowed ? 0 : Math.max(1, resetTime - nowSeconds),
-      algorithm: 'fixed_window',
-    };
-  } catch (err) {
-    logger.warn(`[FixedWindow] Redis error: ${err.message}`);
-    throw err;
-  }
+  return {
+    allowed,
+    limit,
+    remaining,
+    resetTime,
+    current,
+    retryAfter: allowed ? 0 : Math.max(1, resetTime - nowSeconds),
+    algorithm: 'fixed_window',
+  };
 }
 
 async function getFixedWindowStatus({ identityKey, method, path, limit, windowSeconds }) {
@@ -74,8 +68,7 @@ async function getFixedWindowStatus({ identityKey, method, path, limit, windowSe
       resetAt: new Date(resetTime * 1000).toISOString(),
       algorithm: 'fixed_window',
     };
-  } catch (err) {
-    logger.warn(`[FixedWindow] Read status error: ${err.message}`);
+  } catch {
     return {
       allowed: true,
       remaining: limit,

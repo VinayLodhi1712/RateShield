@@ -5,21 +5,31 @@ const Redis = require('ioredis');
 const config = require('./index');
 const logger = require('../utils/logger');
 
+let hasLoggedOfflineWarning = false;
+
 const redis = new Redis(config.redis.url, {
-  maxRetriesPerRequest: 3,
-  enableReadyCheck: true,
-  lazyConnect: true, // connect on demand to avoid blocking startup if offline
+  maxRetriesPerRequest: 1,
+  enableReadyCheck: false,
+  lazyConnect: true,
   retryStrategy(times) {
-    // Exponential backoff capped at 2 seconds
-    return Math.min(times * 100, 2000);
+    if (times > 3) {
+      if (!hasLoggedOfflineWarning) {
+        logger.warn('[Redis] Offline — standalone in-memory fallback active.');
+        hasLoggedOfflineWarning = true;
+      }
+      return null; // Stop endless reconnect loop when offline
+    }
+    return 1000;
   },
 });
 
-redis.on('connect', () => logger.info('[Redis] Connecting to Redis server...'));
-redis.on('ready', () => logger.info('[Redis] Connection ready'));
-redis.on('error', (err) => logger.warn(`[Redis] Connection error: ${err.message}`));
-redis.on('close', () => logger.warn('[Redis] Connection closed'));
-redis.on('reconnecting', (time) => logger.info(`[Redis] Reconnecting in ${time}ms...`));
+redis.on('connect', () => {
+  hasLoggedOfflineWarning = false;
+  logger.info('[Redis] Connection ready');
+});
+redis.on('error', () => {
+  // Suppress uncaught event emitter errors in standalone dev mode
+});
 
 async function pingRedis() {
   const start = Date.now();
@@ -39,11 +49,11 @@ async function pingRedis() {
 
 async function closeRedis() {
   try {
-    if (redis.status !== 'end') {
+    if (redis.status !== 'end' && redis.status !== 'wait') {
       await redis.quit();
     }
-  } catch (err) {
-    logger.warn(`[Redis] Error during shutdown: ${err.message}`);
+  } catch {
+    // ignore
   }
 }
 
