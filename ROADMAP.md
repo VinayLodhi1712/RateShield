@@ -16,7 +16,7 @@ Milestones are implemented one at a time. Do not start a new milestone until the
   Custom error classes, centralized error middleware
 - [x] **Milestone 7 — Authentication (JWT only)**
   Register, login, refresh — JWT + refresh tokens only; API keys deferred to Phase 2
-- [ ] **Milestone 8 — Redis Integration**
+- [x] **Milestone 8 — Redis Integration**
   ioredis client, connection wrapper, health check update
 - [ ] **Milestone 9 — Fixed Window Rate Limiter**
   Lua script, middleware wiring, 429 response shape

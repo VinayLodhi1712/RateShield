@@ -1,34 +1,36 @@
 'use strict';
 
-// GET /health — response shape defined in API.md Section 9.
-// Always returns 200; component failures live in the body, not the status code.
-// Redis and postgres stubs replaced in Milestone 8.
-
-/**
- * @openapi
- * /health:
- *   get:
- *     summary: API server and component health status
- *     tags: [Health]
- *     responses:
- *       200:
- *         description: Server is reachable (check body.data.status for component health)
- */
-
+// GET /health — returns API, Redis, and Postgres operational status (API.md Section 9).
 const express = require('express');
-const router  = express.Router();
+const { pingRedis } = require('../config/redis');
+const { pingDb } = require('../config/db');
 
-router.get('/', (req, res) => {
+const router = express.Router();
+
+router.get('/', async (req, res) => {
+  const [redisHealth, dbHealth] = await Promise.all([
+    pingRedis(),
+    pingDb(),
+  ]);
+
+  const isHealthy = redisHealth.status === 'healthy' && dbHealth.status === 'healthy';
+
+  const redisData = { status: redisHealth.status, latencyMs: redisHealth.latencyMs };
+  if (redisHealth.error) redisData.error = redisHealth.error;
+
+  const postgresData = { status: dbHealth.status, latencyMs: dbHealth.latencyMs };
+  if (dbHealth.error) postgresData.error = dbHealth.error;
+
   res.status(200).json({
     success: true,
     data: {
-      status: 'degraded', // upgraded to 'healthy' once Redis + PG checks are live
+      status: isHealthy ? 'healthy' : 'degraded',
       timestamp: new Date().toISOString(),
       uptime: Math.floor(process.uptime()),
       components: {
-        api:      { status: 'healthy' },
-        redis:    { status: 'not_implemented', latencyMs: null },
-        postgres: { status: 'not_implemented', latencyMs: null },
+        api: { status: 'healthy' },
+        redis: redisData,
+        postgres: postgresData,
       },
     },
   });

@@ -1,25 +1,26 @@
 'use strict';
 
-// server.js — entry point. Only responsibility: load env, validate config, start listening.
-// Separated from app.js so tests can import the app without binding a port.
-
+// Server entry point — loads env, validates config, starts listening.
 require('dotenv').config();
 
-const config = require('./config'); // throws immediately if any required env var is missing
-const logger = require('./utils/logger'); // must come after config loads
-const app    = require('./app');
+const config = require('./config');
+const logger = require('./utils/logger');
+const { closeRedis } = require('./config/redis');
+const { closeDb } = require('./config/db');
+const app = require('./app');
 
 const server = app.listen(config.server.port, () => {
   logger.info(`Server running on port ${config.server.port} (${config.server.env})`);
   logger.info(`Health: http://localhost:${config.server.port}/health`);
 });
 
-// Graceful shutdown — finish in-flight requests before exit.
-// Milestone 8: add Redis + PG pool.close() here.
-function shutdown(signal) {
+// Graceful shutdown — drains in-flight HTTP requests, closes Redis and PG pools cleanly.
+async function shutdown(signal) {
   logger.info(`${signal} received — shutting down gracefully...`);
-  server.close(() => {
+  server.close(async () => {
     logger.info('HTTP server closed.');
+    await closeRedis();
+    await closeDb();
     process.exit(0);
   });
 }

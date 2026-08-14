@@ -16,7 +16,27 @@ pool.on('error', (err) => {
   logger.error(`[PostgreSQL] Unexpected pool error: ${err.message}`);
 });
 
+async function pingDb() {
+  const start = Date.now();
+  try {
+    await pool.query('SELECT 1;');
+    return { status: 'healthy', latencyMs: Date.now() - start, error: null };
+  } catch (err) {
+    return { status: 'unhealthy', latencyMs: null, error: err.message };
+  }
+}
+
+async function closeDb() {
+  try {
+    await pool.end();
+  } catch (err) {
+    logger.warn(`[PostgreSQL] Error during pool shutdown: ${err.message}`);
+  }
+}
+
 module.exports = {
   query: (text, params) => pool.query(text, params),
   pool,
+  pingDb,
+  closeDb,
 };
