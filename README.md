@@ -186,6 +186,7 @@ Every architectural design decision, algorithm specification, and security trade
 | **[API.md](./docs/API.md)** | Complete REST API specification, standard error envelopes, and rate limit headers |
 | **[Deployment.md](./docs/Deployment.md)** | Docker Compose topology, Nginx SSL reverse proxy, and cloud auto-scaling (HPA) |
 | **[Testing.md](./docs/Testing.md)** | 4-tiered QA pyramid, race condition verification, and k6 load scenarios |
+| **[VERIFICATION_GUIDE.md](./docs/VERIFICATION_GUIDE.md)** | Step-by-step verification guide for all features with expected outputs |
 
 ---
 

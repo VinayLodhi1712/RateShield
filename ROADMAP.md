@@ -47,6 +47,11 @@ Milestones are implemented one at a time. Do not start a new milestone until the
 - [x] **Performance Optimization** — profiling, bottleneck fixes
 - [x] **Resume Polish** — README, screenshots, demo GIF
 
-## Stretch Goal
+## Phase 3 — Standalone Package & Production Cloud Deployment
 
-- [ ] Extract rate-limiter core into a standalone npm package (see PRD)
+- [ ] **Milestone 1 — Standalone NPM Package Architecture** (`@rateshield/core`)
+  - Extract Redis Lua limiters, distributed mutex, and Express/Fastify middleware into an independent, zero-dependency engine package
+- [ ] **Milestone 2 — NPM Package Distribution & TypeScript Typing**
+  - Add TypeScript declarations (`.d.ts`), Rollup/esbuild bundle pipeline, and local/npm publishing configs
+- [ ] **Milestone 3 — Production Cloud Deployment (Live URL)**
+  - Deploy RateShield API & Next.js dashboard to AWS ECS / Render / Fly.io with managed PostgreSQL and Redis
