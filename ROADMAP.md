@@ -40,7 +40,7 @@ Milestones are implemented one at a time. Do not start a new milestone until the
 - [x] **Metrics** — Prometheus client, prom-client instrumentation
 - [x] **Prometheus** — scrape config, docker-compose integration
 - [x] **Grafana** — dashboards, provisioning
-- [ ] **Load Testing** — k6 scripts, performance report
+- [x] **Load Testing** — k6 scripts, performance report
 - [ ] **CI/CD** — GitHub Actions: lint, test, build on PR
 - [ ] **Deployment Guide** — docs/Deployment.md, cloud/VPS deploy
 - [ ] **Documentation Polish** — finalize all docs, architecture diagrams
