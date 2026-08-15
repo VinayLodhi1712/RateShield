@@ -6,10 +6,13 @@ const { getFixedWindowStatus } = require('../limiters/fixedWindow.limiter');
 const { getSlidingWindowStatus } = require('../limiters/slidingWindow.limiter');
 const { getSlidingLogStatus } = require('../limiters/slidingLog.limiter');
 const { getTokenBucketStatus } = require('../limiters/tokenBucket.limiter');
+const { getLeakyBucketStatus } = require('../limiters/leakyBucket.limiter');
 const { ValidationError } = require('../utils/errors');
 
 async function resolveStatusByAlgorithm(params, algorithm) {
   switch (algorithm) {
+    case 'leaky_bucket':
+      return getLeakyBucketStatus(params);
     case 'token_bucket':
       return getTokenBucketStatus(params);
     case 'sliding_log':
@@ -53,6 +56,7 @@ async function getStatus(req, res, next) {
     const limit = policy.limit_count || policy.limit || 100;
     const windowSeconds = policy.window_seconds || policy.windowSeconds || 60;
     const algorithm = policy.algorithm || 'fixed_window';
+    const leakRate = policy.leak_rate_per_second || null;
 
     const state = await resolveStatusByAlgorithm(
       {
@@ -61,6 +65,7 @@ async function getStatus(req, res, next) {
         path,
         limit,
         windowSeconds,
+        leakRate,
       },
       algorithm
     );

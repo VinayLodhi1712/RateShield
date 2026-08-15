@@ -5,6 +5,7 @@ const { checkFixedWindow } = require('../limiters/fixedWindow.limiter');
 const { checkSlidingWindow } = require('../limiters/slidingWindow.limiter');
 const { checkSlidingLog } = require('../limiters/slidingLog.limiter');
 const { checkTokenBucket } = require('../limiters/tokenBucket.limiter');
+const { checkLeakyBucket } = require('../limiters/leakyBucket.limiter');
 const { resolvePolicy } = require('../services/policyCache.service');
 const logger = require('../utils/logger');
 
@@ -12,6 +13,8 @@ let hasLoggedFailOpen = false;
 
 async function executeLimiter(params, algorithm) {
   switch (algorithm) {
+    case 'leaky_bucket':
+      return checkLeakyBucket(params);
     case 'token_bucket':
       return checkTokenBucket(params);
     case 'sliding_log':
@@ -42,6 +45,7 @@ function createRateLimiter(customPolicy = null) {
     const failureMode = policy.failure_mode || policy.failureMode || 'open';
     const policyName = policy.name || 'Default Policy';
     const algorithm = policy.algorithm || 'fixed_window';
+    const leakRate = policy.leak_rate_per_second || null;
 
     try {
       const result = await executeLimiter(
@@ -51,6 +55,7 @@ function createRateLimiter(customPolicy = null) {
           path: req.path,
           limit,
           windowSeconds,
+          leakRate,
           requestId: req.id,
         },
         algorithm
