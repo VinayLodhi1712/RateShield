@@ -45,7 +45,7 @@ Milestones are implemented one at a time. Do not start a new milestone until the
 - [x] **Deployment Guide** — docs/Deployment.md, cloud/VPS deploy
 - [x] **Documentation Polish** — finalize all docs, architecture diagrams
 - [x] **Performance Optimization** — profiling, bottleneck fixes
-- [ ] **Resume Polish** — README, screenshots, demo GIF
+- [x] **Resume Polish** — README, screenshots, demo GIF
 
 ## Stretch Goal
 
