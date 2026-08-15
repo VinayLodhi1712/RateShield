@@ -1,0 +1,103 @@
+# Continuous Integration pipeline for RateShield — see docs/Deployment.md
+name: RateShield CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-test:
+    name: Backend Tests & Integration
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: rateshield
+          POSTGRES_PASSWORD: rateshield
+          POSTGRES_DB: rateshield
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Seed database schema
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://rateshield:rateshield@localhost:5432/rateshield
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: ci_test_secret_must_be_at_least_32_characters_long
+        run: npm run db:seed
+
+      - name: Run unit & integration test suites
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://rateshield:rateshield@localhost:5432/rateshield
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: ci_test_secret_must_be_at_least_32_characters_long
+        run: npm test
+
+  frontend-build:
+    name: Frontend Build & Typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build Next.js Dashboard
+        working-directory: ./frontend
+        run: npm run build
+
+  docker-build:
+    name: Docker Image Build Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build backend Docker container
+        run: docker build -t rateshield-api:ci ./backend
