@@ -8,7 +8,6 @@ import {
   Flame,
   CheckCircle2,
   AlertTriangle,
-  RotateCcw,
   Trash2,
   User,
   LogIn,
@@ -20,6 +19,10 @@ import {
   Play,
   Square,
   Lock,
+  Key,
+  Copy,
+  Plus,
+  Check,
 } from 'lucide-react';
 
 const API_BASE = typeof window !== 'undefined' && window.location.port === '3000' ? '' : 'http://localhost:3000';
@@ -29,6 +32,16 @@ interface UserData {
   id: number;
   email: string;
   role: string;
+}
+
+interface ApiKeyItem {
+  id: number;
+  name: string;
+  prefix: string;
+  isActive: boolean;
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
 }
 
 interface TelemetryLog {
@@ -63,6 +76,14 @@ export default function Dashboard() {
   const [authPassword, setAuthPassword] = useState('password123');
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(false);
+
+  // API Keys state
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+  const [apiKeysList, setApiKeysList] = useState<ApiKeyItem[]>([]);
+  const [newKeyName, setNewKeyName] = useState('');
+  const [createdRawKey, setCreatedRawKey] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [activeApiKeyForTraffic, setActiveApiKeyForTraffic] = useState<string | null>(null);
 
   // Health state
   const [health, setHealth] = useState<HealthData>({
@@ -152,9 +173,27 @@ export default function Dashboard() {
     }
   }, [selectedEndpoint, authToken]);
 
+  // Fetch API Keys
+  const fetchApiKeys = useCallback(async () => {
+    if (!authToken) return;
+    try {
+      const res = await fetch(`${API_BASE}/api-keys`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const json = await res.json();
+      if (json.success) {
+        setApiKeysList(json.data);
+      }
+    } catch {
+      // ignore
+    }
+  }, [authToken]);
+
   useEffect(() => {
     fetchHealth();
     fetchRateLimitStatus();
+    if (authToken) fetchApiKeys();
+
     const healthTimer = setInterval(fetchHealth, 4000);
 
     const countdownTimer = setInterval(() => {
@@ -170,7 +209,7 @@ export default function Dashboard() {
       clearInterval(healthTimer);
       clearInterval(countdownTimer);
     };
-  }, [fetchHealth, fetchRateLimitStatus, windowSeconds]);
+  }, [fetchHealth, fetchRateLimitStatus, fetchApiKeys, authToken, windowSeconds]);
 
   // Handle Auth
   const handleAuthSubmit = async (e: React.FormEvent) => {
@@ -211,11 +250,59 @@ export default function Dashboard() {
     fetchRateLimitStatus();
   };
 
+  // API Key creation
+  const handleCreateApiKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newKeyName.trim() || !authToken) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api-keys`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ name: newKeyName.trim() }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setCreatedRawKey(json.data.apiKey.key);
+        setActiveApiKeyForTraffic(json.data.apiKey.key);
+        setNewKeyName('');
+        fetchApiKeys();
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleRevokeApiKey = async (id: number) => {
+    if (!authToken) return;
+    try {
+      const res = await fetch(`${API_BASE}/api-keys/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const json = await res.json();
+      if (json.success) {
+        fetchApiKeys();
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   // Dispatch Request Batch
   const sendBurst = async (count: number) => {
     const [method, path] = selectedEndpoint.split(' ');
     const headers: Record<string, string> = {};
-    if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+    if (activeApiKeyForTraffic) {
+      headers['X-API-Key'] = activeApiKeyForTraffic;
+    } else if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+
     if (method === 'POST') headers['Content-Type'] = 'application/json';
 
     for (let i = 0; i < count; i++) {
@@ -346,9 +433,18 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* User Auth Info */}
+          {/* User Auth & API Keys Info */}
           {currentUser ? (
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  fetchApiKeys();
+                  setIsApiKeyModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 text-xs font-semibold transition"
+              >
+                <Key className="w-3.5 h-3.5" /> API Keys
+              </button>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-xs text-indigo-300 font-medium">
                 <User className="w-3.5 h-3.5" />
                 <span>{currentUser.email}</span>
@@ -471,8 +567,21 @@ export default function Dashboard() {
                 <option value="GET /health">GET /health (Global Limit - 100 req/60s)</option>
                 <option value="POST /auth/login">POST /auth/login (Strict IP - 5 req/60s)</option>
                 <option value="GET /rate-limit/status">GET /rate-limit/status (Inspection - Read Only)</option>
+                <option value="GET /api-keys">GET /api-keys (List API Keys)</option>
               </select>
             </div>
+
+            {activeApiKeyForTraffic && (
+              <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-between text-xs">
+                <span className="text-indigo-300 font-mono truncate">X-API-Key: {activeApiKeyForTraffic.slice(0, 12)}...</span>
+                <button
+                  onClick={() => setActiveApiKeyForTraffic(null)}
+                  className="text-rose-400 hover:text-rose-300 text-[11px] font-semibold"
+                >
+                  Clear Key
+                </button>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3 mt-1">
               <button
@@ -609,6 +718,120 @@ export default function Dashboard() {
           </div>
         </section>
       </main>
+
+      {/* API Keys Management Modal */}
+      {isApiKeyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+          <div className="glass-panel w-full max-w-xl p-6 rounded-2xl bg-[#0f172a] shadow-2xl border border-white/10 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-2 border-b border-white/10">
+              <h3 className="font-semibold text-white text-base flex items-center gap-2">
+                <Key className="w-4 h-4 text-cyan-400" />
+                API Keys Management
+              </h3>
+              <button
+                onClick={() => {
+                  setIsApiKeyModalOpen(false);
+                  setCreatedRawKey(null);
+                }}
+                className="text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Created Key Banner */}
+            {createdRawKey && (
+              <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex flex-col gap-2">
+                <span className="text-xs font-semibold text-cyan-300">New API Key Created (Save this now — it will not be shown again):</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={createdRawKey}
+                    className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-1.5 font-mono text-xs text-white"
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(createdRawKey);
+                      setCopiedKey(true);
+                      setTimeout(() => setCopiedKey(false), 2000);
+                    }}
+                    className="p-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white transition flex items-center justify-center"
+                    title="Copy API Key"
+                  >
+                    {copiedKey ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Create Key Form */}
+            <form onSubmit={handleCreateApiKey} className="flex gap-2">
+              <input
+                type="text"
+                placeholder="e.g. Production Microservice"
+                value={newKeyName}
+                onChange={(e) => setNewKeyName(e.target.value)}
+                className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
+                required
+              />
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition"
+              >
+                <Plus className="w-3.5 h-3.5" /> Generate Key
+              </button>
+            </form>
+
+            {/* Keys List Table */}
+            <div className="overflow-x-auto rounded-xl border border-white/5 bg-black/20">
+              <table className="w-full text-left text-xs font-mono">
+                <thead className="bg-[#0d1424] text-slate-400 border-b border-white/10 uppercase text-[10px]">
+                  <tr>
+                    <th className="px-3 py-2.5">Name</th>
+                    <th className="px-3 py-2.5">Prefix</th>
+                    <th className="px-3 py-2.5">Status</th>
+                    <th className="px-3 py-2.5">Created</th>
+                    <th className="px-3 py-2.5 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.03]">
+                  {apiKeysList.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-8 text-slate-500 font-sans">
+                        No active API keys found. Generate one above!
+                      </td>
+                    </tr>
+                  ) : (
+                    apiKeysList.map((k) => (
+                      <tr key={k.id} className="hover:bg-white/[0.02]">
+                        <td className="px-3 py-2 font-semibold text-slate-200">{k.name}</td>
+                        <td className="px-3 py-2 text-cyan-300">{k.prefix}...</td>
+                        <td className="px-3 py-2">
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${k.isActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                            {k.isActive ? 'Active' : 'Revoked'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-slate-400">{new Date(k.createdAt).toLocaleDateString()}</td>
+                        <td className="px-3 py-2 text-right">
+                          {k.isActive && (
+                            <button
+                              onClick={() => handleRevokeApiKey(k.id)}
+                              className="px-2 py-1 rounded text-[10px] bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20 transition"
+                            >
+                              Revoke
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Auth Modal */}
       {isAuthModalOpen && (

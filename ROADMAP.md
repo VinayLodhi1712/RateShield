@@ -31,7 +31,7 @@ Milestones are implemented one at a time. Do not start a new milestone until the
 
 > Complete Phase 1 first. Nothing here blocks a working demo.
 
-- [ ] **API Keys** — create, list, revoke; API key auth on rate limiter
+- [x] **API Keys** — create, list, revoke; API key auth on rate limiter
 - [ ] **Sliding Window algorithm**
 - [ ] **Sliding Log algorithm**
 - [ ] **Token Bucket algorithm**

@@ -3,30 +3,48 @@
 // Stage 1 Auth Middleware & Stage 3 Auth Guards — see Architecture.md §2.2 and API.md §3.
 const jwt = require('jsonwebtoken');
 const config = require('../config');
+const { validateApiKey } = require('../services/apiKey.service');
 const { UnauthorizedError, ForbiddenError } = require('../utils/errors');
 
-function authMiddleware(req, _res, next) {
-  const authHeader = req.headers.authorization;
+async function authMiddleware(req, _res, next) {
   const ipAddress = req.ip || req.socket.remoteAddress || '127.0.0.1';
+  const apiKeyHeader = req.headers['x-api-key'];
+  const authHeader = req.headers.authorization;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    req.user = null;
-    req.identityKey = `ip:${ipAddress}`;
-    return next();
+  // 1. API Key Authentication (X-API-Key or Authorization: ApiKey <key>)
+  let rawApiKey = apiKeyHeader;
+  if (!rawApiKey && authHeader && authHeader.startsWith('ApiKey ')) {
+    rawApiKey = authHeader.split(' ')[1];
   }
 
-  const token = authHeader.split(' ')[1];
-  try {
-    const decoded = jwt.verify(token, config.jwt.secret);
-    req.user = { id: decoded.sub, email: decoded.email, role: decoded.role };
-    req.identityKey = `user:${decoded.sub}`;
-    next();
-  } catch {
-    // Graceful fallback to IP identity on expired/invalid token so public routes (/health) remain accessible
-    req.user = null;
-    req.identityKey = `ip:${ipAddress}`;
-    next();
+  if (rawApiKey) {
+    const keyInfo = await validateApiKey(rawApiKey);
+    if (keyInfo) {
+      req.user = { id: keyInfo.userId, email: keyInfo.userEmail, role: keyInfo.userRole };
+      req.apiKey = keyInfo;
+      req.identityKey = `apikey:${keyInfo.prefix}`;
+      return next();
+    }
   }
+
+  // 2. JWT Authentication (Authorization: Bearer <token>)
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.verify(token, config.jwt.secret);
+      req.user = { id: decoded.sub, email: decoded.email, role: decoded.role };
+      req.identityKey = `user:${decoded.sub}`;
+      return next();
+    } catch {
+      // Fallback to IP on expired token
+    }
+  }
+
+  // 3. Fallback to Anonymous IP Identity
+  req.user = null;
+  req.apiKey = null;
+  req.identityKey = `ip:${ipAddress}`;
+  next();
 }
 
 function requireAuth(req, _res, next) {

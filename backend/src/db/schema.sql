@@ -20,6 +20,21 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
     created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS api_keys (
+    id           BIGSERIAL    PRIMARY KEY,
+    user_id      BIGINT       NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    key_hash     TEXT         NOT NULL UNIQUE,
+    key_prefix   TEXT         NOT NULL,
+    name         TEXT         NOT NULL,
+    is_active    BOOLEAN      NOT NULL DEFAULT TRUE,
+    last_used_at TIMESTAMPTZ  NULL,
+    expires_at   TIMESTAMPTZ  NULL,
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_keys_user_id ON api_keys(user_id);
+CREATE INDEX IF NOT EXISTS idx_api_keys_active ON api_keys(key_hash) WHERE is_active = TRUE;
+
 CREATE TABLE IF NOT EXISTS policies (
     id                   BIGSERIAL    PRIMARY KEY,
     name                 TEXT         NOT NULL,

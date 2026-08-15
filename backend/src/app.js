@@ -15,6 +15,7 @@ const errorMiddleware         = require('./middleware/error.middleware');
 const healthRouter    = require('./routes/health.routes');
 const authRouter      = require('./routes/auth.routes');
 const rateLimitRouter = require('./routes/rateLimit.routes');
+const apiKeyRouter    = require('./routes/apiKey.routes');
 
 const app = express();
 
@@ -39,7 +40,7 @@ app.use(express.json({ limit: '10kb' }));
 // 6. Serve static interactive frontend dashboard.
 app.use(express.static(path.join(__dirname, '../../frontend')));
 
-// 7. Stage 1 Auth Middleware — decodes JWT or sets IP identity (API.md §3).
+// 7. Stage 1 Auth Middleware — decodes JWT / API Key or sets IP identity (API.md §3).
 app.use(authMiddleware);
 
 // 8. Stage 2 Rate Limiter Middleware — atomic Fixed Window check against Redis.
@@ -49,6 +50,7 @@ app.use(rateLimitMiddleware);
 app.use('/health', healthRouter);
 app.use('/auth', authRouter);
 app.use('/rate-limit', rateLimitRouter);
+app.use('/api-keys', apiKeyRouter);
 
 // 10. 404 handler for unmatched routes.
 app.use((req, _res, next) => {
