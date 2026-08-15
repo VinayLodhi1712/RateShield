@@ -68,7 +68,25 @@ services:
     depends_on:
       - api
 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: rateshield-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - rateshield_grafanadata:/var/lib/grafana
+    depends_on:
+      - prometheus
+
 volumes:
   rateshield_pgdata:
   rateshield_redisdata:
   rateshield_promdata:
+  rateshield_grafanadata:

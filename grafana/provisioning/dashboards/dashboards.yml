@@ -1,0 +1,12 @@
+# Grafana dashboard provider provisioning — see docs/Deployment.md
+apiVersion: 1
+
+providers:
+  - name: 'RateShield Dashboards'
+    orgId: 1
+    folder: 'RateShield'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

@@ -39,7 +39,7 @@ Milestones are implemented one at a time. Do not start a new milestone until the
 - [x] **Distributed Locking** — Lua atomicity hardening, race condition tests
 - [x] **Metrics** — Prometheus client, prom-client instrumentation
 - [x] **Prometheus** — scrape config, docker-compose integration
-- [ ] **Grafana** — dashboards, provisioning
+- [x] **Grafana** — dashboards, provisioning
 - [ ] **Load Testing** — k6 scripts, performance report
 - [ ] **CI/CD** — GitHub Actions: lint, test, build on PR
 - [ ] **Deployment Guide** — docs/Deployment.md, cloud/VPS deploy
