@@ -33,7 +33,7 @@ Milestones are implemented one at a time. Do not start a new milestone until the
 
 - [x] **API Keys** — create, list, revoke; API key auth on rate limiter
 - [x] **Sliding Window algorithm**
-- [ ] **Sliding Log algorithm**
+- [x] **Sliding Log algorithm**
 - [ ] **Token Bucket algorithm**
 - [ ] **Leaky Bucket algorithm**
 - [ ] **Distributed Locking** — Lua atomicity hardening, race condition tests

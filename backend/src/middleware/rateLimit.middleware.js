@@ -3,6 +3,7 @@
 // Stage 2 Rate Limit Middleware — see Architecture.md §2.3 and API.md §5, §11.
 const { checkFixedWindow } = require('../limiters/fixedWindow.limiter');
 const { checkSlidingWindow } = require('../limiters/slidingWindow.limiter');
+const { checkSlidingLog } = require('../limiters/slidingLog.limiter');
 const { resolvePolicy } = require('../services/policyCache.service');
 const logger = require('../utils/logger');
 
@@ -10,6 +11,8 @@ let hasLoggedFailOpen = false;
 
 async function executeLimiter(params, algorithm) {
   switch (algorithm) {
+    case 'sliding_log':
+      return checkSlidingLog(params);
     case 'sliding_window':
       return checkSlidingWindow(params);
     case 'fixed_window':
@@ -45,6 +48,7 @@ function createRateLimiter(customPolicy = null) {
           path: req.path,
           limit,
           windowSeconds,
+          requestId: req.id,
         },
         algorithm
       );

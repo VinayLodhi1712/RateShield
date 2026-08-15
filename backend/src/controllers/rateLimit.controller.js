@@ -4,10 +4,13 @@
 const { resolvePolicy } = require('../services/policyCache.service');
 const { getFixedWindowStatus } = require('../limiters/fixedWindow.limiter');
 const { getSlidingWindowStatus } = require('../limiters/slidingWindow.limiter');
+const { getSlidingLogStatus } = require('../limiters/slidingLog.limiter');
 const { ValidationError } = require('../utils/errors');
 
 async function resolveStatusByAlgorithm(params, algorithm) {
   switch (algorithm) {
+    case 'sliding_log':
+      return getSlidingLogStatus(params);
     case 'sliding_window':
       return getSlidingWindowStatus(params);
     case 'fixed_window':
