@@ -3,7 +3,18 @@
 // Rate limit status controller — see API.md Section 9.
 const { resolvePolicy } = require('../services/policyCache.service');
 const { getFixedWindowStatus } = require('../limiters/fixedWindow.limiter');
+const { getSlidingWindowStatus } = require('../limiters/slidingWindow.limiter');
 const { ValidationError } = require('../utils/errors');
+
+async function resolveStatusByAlgorithm(params, algorithm) {
+  switch (algorithm) {
+    case 'sliding_window':
+      return getSlidingWindowStatus(params);
+    case 'fixed_window':
+    default:
+      return getFixedWindowStatus(params);
+  }
+}
 
 async function getStatus(req, res, next) {
   try {
@@ -35,14 +46,18 @@ async function getStatus(req, res, next) {
 
     const limit = policy.limit_count || policy.limit || 100;
     const windowSeconds = policy.window_seconds || policy.windowSeconds || 60;
+    const algorithm = policy.algorithm || 'fixed_window';
 
-    const state = await getFixedWindowStatus({
-      identityKey,
-      method,
-      path,
-      limit,
-      windowSeconds,
-    });
+    const state = await resolveStatusByAlgorithm(
+      {
+        identityKey,
+        method,
+        path,
+        limit,
+        windowSeconds,
+      },
+      algorithm
+    );
 
     res.status(200).json({
       success: true,
@@ -51,7 +66,7 @@ async function getStatus(req, res, next) {
         policy: {
           id: policy.id,
           name: policy.name,
-          algorithm: policy.algorithm || 'fixed_window',
+          algorithm,
           limitCount: limit,
           windowSeconds,
           failureMode: policy.failure_mode || 'open',

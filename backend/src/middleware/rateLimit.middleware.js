@@ -2,10 +2,21 @@
 
 // Stage 2 Rate Limit Middleware — see Architecture.md §2.3 and API.md §5, §11.
 const { checkFixedWindow } = require('../limiters/fixedWindow.limiter');
+const { checkSlidingWindow } = require('../limiters/slidingWindow.limiter');
 const { resolvePolicy } = require('../services/policyCache.service');
 const logger = require('../utils/logger');
 
 let hasLoggedFailOpen = false;
+
+async function executeLimiter(params, algorithm) {
+  switch (algorithm) {
+    case 'sliding_window':
+      return checkSlidingWindow(params);
+    case 'fixed_window':
+    default:
+      return checkFixedWindow(params);
+  }
+}
 
 function createRateLimiter(customPolicy = null) {
   return async function rateLimitMiddleware(req, res, next) {
@@ -24,15 +35,19 @@ function createRateLimiter(customPolicy = null) {
     const windowSeconds = policy.window_seconds || policy.windowSeconds || 60;
     const failureMode = policy.failure_mode || policy.failureMode || 'open';
     const policyName = policy.name || 'Default Policy';
+    const algorithm = policy.algorithm || 'fixed_window';
 
     try {
-      const result = await checkFixedWindow({
-        identityKey,
-        method: req.method,
-        path: req.path,
-        limit,
-        windowSeconds,
-      });
+      const result = await executeLimiter(
+        {
+          identityKey,
+          method: req.method,
+          path: req.path,
+          limit,
+          windowSeconds,
+        },
+        algorithm
+      );
 
       hasLoggedFailOpen = false;
       res.setHeader('X-RateLimit-Limit', result.limit);
