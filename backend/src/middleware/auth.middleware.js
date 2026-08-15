@@ -7,10 +7,11 @@ const { UnauthorizedError, ForbiddenError } = require('../utils/errors');
 
 function authMiddleware(req, _res, next) {
   const authHeader = req.headers.authorization;
+  const ipAddress = req.ip || req.socket.remoteAddress || '127.0.0.1';
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     req.user = null;
-    req.identityKey = 'ip:' + (req.ip || req.socket.remoteAddress || '127.0.0.1');
+    req.identityKey = `ip:${ipAddress}`;
     return next();
   }
 
@@ -18,11 +19,13 @@ function authMiddleware(req, _res, next) {
   try {
     const decoded = jwt.verify(token, config.jwt.secret);
     req.user = { id: decoded.sub, email: decoded.email, role: decoded.role };
-    req.identityKey = 'user:' + decoded.sub;
+    req.identityKey = `user:${decoded.sub}`;
     next();
-  } catch (err) {
-    const code = err.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN';
-    next(new UnauthorizedError('Invalid or expired token', code));
+  } catch {
+    // Graceful fallback to IP identity on expired/invalid token so public routes (/health) remain accessible
+    req.user = null;
+    req.identityKey = `ip:${ipAddress}`;
+    next();
   }
 }
 
