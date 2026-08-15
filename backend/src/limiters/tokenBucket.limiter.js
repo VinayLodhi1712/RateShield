@@ -2,6 +2,7 @@
 
 // Token Bucket rate limiter — see Algorithms.md §6 and Redis.md §5.
 const { redis } = require('../config/redis');
+const { runLuaScript } = require('../utils/luaScriptRunner');
 
 const TOKEN_BUCKET_LUA = `
 local key = KEYS[1]
@@ -49,20 +50,31 @@ function buildKey(identityKey, method, path) {
 async function checkTokenBucket({ identityKey, method, path, limit, windowSeconds }) {
   const nowMs = Date.now();
   const capacity = limit;
-  const refillRate = limit / windowSeconds; // refill rate per second
+  const refillRate = limit / windowSeconds;
   const ttlSeconds = windowSeconds * 3;
   const key = buildKey(identityKey, method, path);
 
   try {
-    const result = await redis.eval(
-      TOKEN_BUCKET_LUA,
-      1,
-      key,
-      capacity,
-      refillRate,
-      nowMs,
-      ttlSeconds
-    );
+    const result = typeof redis.evalsha === 'function'
+      ? await runLuaScript(
+          redis,
+          TOKEN_BUCKET_LUA,
+          1,
+          key,
+          capacity,
+          refillRate,
+          nowMs,
+          ttlSeconds
+        )
+      : await redis.eval(
+          TOKEN_BUCKET_LUA,
+          1,
+          key,
+          capacity,
+          refillRate,
+          nowMs,
+          ttlSeconds
+        );
 
     const allowed = result[0] === 1;
     const remaining = Math.max(0, Number(result[2]));

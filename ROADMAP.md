@@ -44,7 +44,7 @@ Milestones are implemented one at a time. Do not start a new milestone until the
 - [x] **CI/CD** — GitHub Actions: lint, test, build on PR
 - [x] **Deployment Guide** — docs/Deployment.md, cloud/VPS deploy
 - [x] **Documentation Polish** — finalize all docs, architecture diagrams
-- [ ] **Performance Optimization** — profiling, bottleneck fixes
+- [x] **Performance Optimization** — profiling, bottleneck fixes
 - [ ] **Resume Polish** — README, screenshots, demo GIF
 
 ## Stretch Goal

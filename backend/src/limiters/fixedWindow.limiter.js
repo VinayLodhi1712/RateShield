@@ -2,6 +2,7 @@
 
 // Fixed Window rate limiter — see Redis.md Section 5 and Algorithms.md Section 3.
 const { redis } = require('../config/redis');
+const { runLuaScript } = require('../utils/luaScriptRunner');
 
 const FIXED_WINDOW_LUA = `
 local key = KEYS[1]
@@ -34,7 +35,10 @@ async function checkFixedWindow({ identityKey, method, path, limit, windowSecond
   const resetTime = windowStart + windowSeconds;
   const key = buildKey(identityKey, method, path, windowStart);
 
-  const result = await redis.eval(FIXED_WINDOW_LUA, 1, key, limit, windowSeconds);
+  const result = typeof redis.evalsha === 'function'
+    ? await runLuaScript(redis, FIXED_WINDOW_LUA, 1, key, limit, windowSeconds)
+    : await redis.eval(FIXED_WINDOW_LUA, 1, key, limit, windowSeconds);
+
   const allowed = result[0] === 1;
   const current = Number(result[1]);
   const remaining = Math.max(0, Number(result[2]));

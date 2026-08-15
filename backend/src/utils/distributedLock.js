@@ -3,6 +3,7 @@
 // Distributed lock with atomic release Lua script — see Architecture.md §3 and Redis.md §5.
 const crypto = require('crypto');
 const { redis } = require('../config/redis');
+const { runLuaScript } = require('./luaScriptRunner');
 const logger = require('./logger');
 
 const RELEASE_LOCK_LUA = `
@@ -60,7 +61,9 @@ async function acquireLock(resource, { ttlMs = 5000, retryCount = 5, retryDelayM
 
 async function releaseLock(lockKey, token) {
   try {
-    const result = await redis.eval(RELEASE_LOCK_LUA, 1, lockKey, token);
+    const result = typeof redis.evalsha === 'function'
+      ? await runLuaScript(redis, RELEASE_LOCK_LUA, 1, lockKey, token)
+      : await redis.eval(RELEASE_LOCK_LUA, 1, lockKey, token);
     return result === 1;
   } catch {
     const existing = inMemoryLocks.get(lockKey);

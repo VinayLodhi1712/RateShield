@@ -2,6 +2,7 @@
 
 // Sliding Window Counter limiter — see Algorithms.md §4 and Redis.md §5.
 const { redis } = require('../config/redis');
+const { runLuaScript } = require('../utils/luaScriptRunner');
 
 const SLIDING_WINDOW_LUA = `
 local curr_key = KEYS[1]
@@ -49,16 +50,28 @@ async function checkSlidingWindow({ identityKey, method, path, limit, windowSeco
   const prevKey = buildKey(identityKey, method, path, prevWindowStart);
 
   try {
-    const result = await redis.eval(
-      SLIDING_WINDOW_LUA,
-      2,
-      currKey,
-      prevKey,
-      limit,
-      windowSeconds,
-      nowSeconds,
-      windowStart
-    );
+    const result = typeof redis.evalsha === 'function'
+      ? await runLuaScript(
+          redis,
+          SLIDING_WINDOW_LUA,
+          2,
+          currKey,
+          prevKey,
+          limit,
+          windowSeconds,
+          nowSeconds,
+          windowStart
+        )
+      : await redis.eval(
+          SLIDING_WINDOW_LUA,
+          2,
+          currKey,
+          prevKey,
+          limit,
+          windowSeconds,
+          nowSeconds,
+          windowStart
+        );
 
     const allowed = result[0] === 1;
     const current = Number(result[1]);

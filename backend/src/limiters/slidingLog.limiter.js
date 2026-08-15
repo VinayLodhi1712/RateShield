@@ -3,6 +3,7 @@
 // Sliding Log rate limiter — see Algorithms.md §5 and Redis.md §5.
 const crypto = require('crypto');
 const { redis } = require('../config/redis');
+const { runLuaScript } = require('../utils/luaScriptRunner');
 
 const SLIDING_LOG_LUA = `
 local key = KEYS[1]
@@ -47,16 +48,28 @@ async function checkSlidingLog({ identityKey, method, path, limit, windowSeconds
   const key = buildKey(identityKey, method, path);
 
   try {
-    const result = await redis.eval(
-      SLIDING_LOG_LUA,
-      1,
-      key,
-      limit,
-      windowMs,
-      nowMs,
-      reqId,
-      ttlSeconds
-    );
+    const result = typeof redis.evalsha === 'function'
+      ? await runLuaScript(
+          redis,
+          SLIDING_LOG_LUA,
+          1,
+          key,
+          limit,
+          windowMs,
+          nowMs,
+          reqId,
+          ttlSeconds
+        )
+      : await redis.eval(
+          SLIDING_LOG_LUA,
+          1,
+          key,
+          limit,
+          windowMs,
+          nowMs,
+          reqId,
+          ttlSeconds
+        );
 
     const allowed = result[0] === 1;
     const current = Number(result[1]);
