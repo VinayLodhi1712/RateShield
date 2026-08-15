@@ -7,6 +7,7 @@ const { checkSlidingLog } = require('../limiters/slidingLog.limiter');
 const { checkTokenBucket } = require('../limiters/tokenBucket.limiter');
 const { checkLeakyBucket } = require('../limiters/leakyBucket.limiter');
 const { resolvePolicy } = require('../services/policyCache.service');
+const { rateLimitDecisionsTotal, rateLimitBlockedTotal, redisErrorsTotal } = require('../metrics/metrics');
 const logger = require('../utils/logger');
 
 let hasLoggedFailOpen = false;
@@ -67,7 +68,12 @@ function createRateLimiter(customPolicy = null) {
       res.setHeader('X-RateLimit-Reset', result.resetTime);
       res.setHeader('X-RateLimit-Algorithm', result.algorithm);
 
+      // Track metric decision in Prometheus
+      const action = result.allowed ? 'allowed' : 'blocked';
+      rateLimitDecisionsTotal.inc({ algorithm: result.algorithm, action, policy_name: policyName });
+
       if (!result.allowed) {
+        rateLimitBlockedTotal.inc({ algorithm: result.algorithm, policy_name: policyName });
         res.setHeader('Retry-After', result.retryAfter);
         return res.status(429).json({
           success: false,
@@ -85,6 +91,8 @@ function createRateLimiter(customPolicy = null) {
 
       next();
     } catch (err) {
+      redisErrorsTotal.inc({ operation: 'check_rate_limit' });
+
       if (failureMode === 'closed') {
         logger.error(`[RateLimit] Redis unavailable on fail-closed policy: ${err.message}`);
         return res.status(503).json({

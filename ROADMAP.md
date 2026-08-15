@@ -37,7 +37,7 @@ Milestones are implemented one at a time. Do not start a new milestone until the
 - [x] **Token Bucket algorithm**
 - [x] **Leaky Bucket algorithm**
 - [x] **Distributed Locking** — Lua atomicity hardening, race condition tests
-- [ ] **Metrics** — Prometheus client, prom-client instrumentation
+- [x] **Metrics** — Prometheus client, prom-client instrumentation
 - [ ] **Prometheus** — scrape config, docker-compose integration
 - [ ] **Grafana** — dashboards, provisioning
 - [ ] **Load Testing** — k6 scripts, performance report

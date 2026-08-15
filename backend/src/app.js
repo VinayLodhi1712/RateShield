@@ -8,11 +8,13 @@ const cors    = require('cors');
 
 const requestIdMiddleware     = require('./middleware/requestId.middleware');
 const requestLoggerMiddleware = require('./middleware/requestLogger.middleware');
+const metricsMiddleware       = require('./middleware/metrics.middleware');
 const { authMiddleware }      = require('./middleware/auth.middleware');
 const { rateLimitMiddleware } = require('./middleware/rateLimit.middleware');
 const errorMiddleware         = require('./middleware/error.middleware');
 
 const healthRouter    = require('./routes/health.routes');
+const metricsRouter   = require('./routes/metrics.routes');
 const authRouter      = require('./routes/auth.routes');
 const rateLimitRouter = require('./routes/rateLimit.routes');
 const apiKeyRouter    = require('./routes/apiKey.routes');
@@ -22,8 +24,9 @@ const app = express();
 // 1. Request ID first — all downstream logs and errors carry X-Request-Id.
 app.use(requestIdMiddleware);
 
-// 2. HTTP request logger.
+// 2. HTTP request logger and Prometheus metrics timer.
 app.use(requestLoggerMiddleware);
+app.use(metricsMiddleware);
 
 // 3. Security headers (relaxed CSP for dashboard Google fonts and styles).
 app.use(helmet({
@@ -48,6 +51,7 @@ app.use(rateLimitMiddleware);
 
 // 9. Stage 3 API Routes.
 app.use('/health', healthRouter);
+app.use('/metrics', metricsRouter);
 app.use('/auth', authRouter);
 app.use('/rate-limit', rateLimitRouter);
 app.use('/api-keys', apiKeyRouter);
