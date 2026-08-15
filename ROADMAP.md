@@ -43,7 +43,7 @@ Milestones are implemented one at a time. Do not start a new milestone until the
 - [x] **Load Testing** — k6 scripts, performance report
 - [x] **CI/CD** — GitHub Actions: lint, test, build on PR
 - [x] **Deployment Guide** — docs/Deployment.md, cloud/VPS deploy
-- [ ] **Documentation Polish** — finalize all docs, architecture diagrams
+- [x] **Documentation Polish** — finalize all docs, architecture diagrams
 - [ ] **Performance Optimization** — profiling, bottleneck fixes
 - [ ] **Resume Polish** — README, screenshots, demo GIF
 
