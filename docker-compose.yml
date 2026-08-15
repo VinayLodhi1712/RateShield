@@ -1,4 +1,4 @@
-# Docker Compose orchestration for RateShield MVP — see docs/Deployment.md
+# Docker Compose orchestration for RateShield — see docs/Deployment.md
 services:
   postgres:
     image: postgres:16-alpine
@@ -54,6 +54,21 @@ services:
       redis:
         condition: service_healthy
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rateshield-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - rateshield_promdata:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - api
+
 volumes:
   rateshield_pgdata:
   rateshield_redisdata:
+  rateshield_promdata:

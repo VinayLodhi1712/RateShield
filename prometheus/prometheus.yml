@@ -1,0 +1,10 @@
+# Prometheus scrape configuration for RateShield — see docs/Deployment.md
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: 'rateshield-api'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['api:3000', 'host.docker.internal:3000']
